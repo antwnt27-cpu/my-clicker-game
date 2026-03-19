@@ -1,4 +1,183 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stimulation Clicker: MAXIMA</title>
+    <style>
+        :root { --neon: #00ffff; --pink: #ff00ff; }
+        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; }
+        
+        /* Top Bar & XP */
+        #top-bar { position: fixed; top: 0; width: 100%; background: rgba(0,0,0,0.8); padding: 10px; z-index: 300; border-bottom: 2px solid var(--neon); }
+        #xp-container { width: 100%; height: 10px; background: #333; border-radius: 5px; margin-top: 5px; }
+        #xp-bar { width: 0%; height: 100%; background: var(--neon); transition: width 0.3s; }
+
+        /* Game UI */
+        #game-ui { position: relative; z-index: 100; text-align: center; padding-top: 100px; pointer-events: none; }
+        #stats { font-size: 48px; font-weight: 900; text-shadow: 0 0 20px var(--pink); margin-bottom: 10px; }
+        #click-button {
+            padding: 30px 60px; font-size: 30px; cursor: pointer;
+            background: #fff; color: #000; border: none; border-radius: 10px;
+            pointer-events: auto; font-weight: bold; transition: 0.1s;
+        }
+        #click-button:active { transform: scale(0.9); background: var(--pink); color: white; }
+
+        /* Shop */
+        #shop {
+            position: fixed; right: 0; top: 0; bottom: 0; width: 300px;
+            background: #111; border-left: 2px solid var(--neon);
+            padding: 20px; z-index: 200; overflow-y: auto;
+        }
+        .upgrade {
+            background: #222; border: 1px solid #444; padding: 15px;
+            margin-bottom: 10px; cursor: pointer; border-radius: 8px; pointer-events: auto;
+        }
+        .upgrade:hover { border-color: var(--pink); background: #2a2a2a; }
+        .price { color: #00ff00; font-family: monospace; }
+        .lvl { float: right; color: var(--neon); font-size: 12px; }
+
+        /* Distractions */
+        .chaos { position: absolute; pointer-events: none; border: 2px solid white; box-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        .dvd { width: 80px; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .video-box { width: 150px; height: 250px; background: #333; overflow: hidden; }
+        .slime { border-radius: 50%; width: 60px; height: 60px; background: #0f0; opacity: 0.6; filter: blur(5px); }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div>LEVEL <span id="level">1</span> | <span id="sps">0</span> STIM/SEC</div>
+        <div id="xp-container"><div id="xp-bar"></div></div>
+    </div>
+
+    <div id="game-ui">
+        <div id="stats"><span id="score">0</span></div>
+        <button id="click-button">CLICK FOR CONTENT</button>
+    </div>
+
+    <div id="shop">
+        <h2 style="color:var(--pink)">UPGRADES</h2>
+        <div class="upgrade" onclick="buy('dvd')">
+            <b>Bouncing Logo</b> <span class="lvl" id="lvl-dvd">0</span><br>
+            <span class="price">Cost: <span id="cost-dvd">15</span></span>
+        </div>
+        <div class="upgrade" onclick="buy('slime')">
+            <b>ASMR Slime</b> <span class="lvl" id="lvl-slime">0</span><br>
+            <span class="price">Cost: <span id="cost-slime">100</span></span>
+        </div>
+        <div class="upgrade" onclick="buy('subway')">
+            <b>Subway Surfers</b> <span class="lvl" id="lvl-subway">0</span><br>
+            <span class="price">Cost: <span id="cost-subway">500</span></span>
+        </div>
+        <div class="upgrade" onclick="buy('press')">
+            <b>Hydraulic Press</b> <span class="lvl" id="lvl-press">0</span><br>
+            <span class="price">Cost: <span id="cost-press">2500</span></span>
+        </div>
+        <div class="upgrade" onclick="buy('stocks')">
+            <b>Day Trading Bot</b> <span class="lvl" id="lvl-stocks">0</span><br>
+            <span class="price">Cost: <span id="cost-stocks">10000</span></span>
+        </div>
+        <button onclick="localStorage.clear(); location.reload();" style="width:100%; margin-top:20px; background:#444; color:#fff; border:none; padding:5px;">RESET GAME</button>
+    </div>
+
+    <script>
+        // State
+        let data = JSON.parse(localStorage.getItem('stimData')) || {
+            score: 0, level: 1, xp: 0,
+            upgrades: { dvd: 0, slime: 0, subway: 0, press: 0, stocks: 0 }
+        };
+
+        const costs = { dvd: 15, slime: 100, subway: 500, press: 2500, stocks: 10000 };
+        const powers = { dvd: 1, slime: 5, subway: 25, press: 150, stocks: 1000 };
+
+        // Core Loop
+        document.getElementById('click-button').onclick = () => {
+            gainStim(1 + (data.level * 0.5));
+            gainXP(5);
+        };
+
+        function gainStim(amt) {
+            data.score += amt;
+            updateUI();
+        }
+
+        function gainXP(amt) {
+            data.xp += amt;
+            let needed = data.level * 100;
+            if (data.xp >= needed) {
+                data.xp = 0;
+                data.level++;
+                document.body.style.background = `hsl(${Math.random()*360}, 20%, 10%)`;
+            }
+            updateUI();
+        }
+
+        function buy(id) {
+            let cost = Math.floor(costs[id] * Math.pow(1.15, data.upgrades[id]));
+            if (data.score >= cost) {
+                data.score -= cost;
+                data.upgrades[id]++;
+                if (id === 'dvd') spawnDVD();
+                if (id === 'slime') spawnSlime();
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('score').innerText = Math.floor(data.score).toLocaleString();
+            document.getElementById('level').innerText = data.level;
+            document.getElementById('xp-bar').style.width = (data.xp / (data.level * 100)) * 100 + "%";
+            
+            let totalSPS = 0;
+            for (let id in data.upgrades) {
+                let currentCost = Math.floor(costs[id] * Math.pow(1.15, data.upgrades[id]));
+                document.getElementById(`cost-${id}`).innerText = currentCost.toLocaleString();
+                document.getElementById(`lvl-${id}`).innerText = data.upgrades[id];
+                totalSPS += data.upgrades[id] * powers[id];
+            }
+            document.getElementById('sps').innerText = totalSPS.toLocaleString();
+            localStorage.setItem('stimData', JSON.stringify(data));
+        }
+
+        // Passive Income
+        setInterval(() => {
+            let totalSPS = 0;
+            for (let id in data.upgrades) totalSPS += data.upgrades[id] * powers[id];
+            gainStim(totalSPS / 10);
+        }, 100);
+
+        // Visuals
+        function spawnDVD() {
+            const div = document.createElement('div');
+            div.className = 'chaos dvd'; div.innerText = 'DVD';
+            document.body.appendChild(div);
+            let x = 50, y = 50, dx = 3, dy = 3;
+            function move() {
+                x += dx; y += dy;
+                if (x + 80 >= window.innerWidth - 300 || x <= 0) { dx *= -1; gainStim(data.level); }
+                if (y + 40 >= window.innerHeight || y <= 0) { dy *= -1; gainStim(data.level); }
+                div.style.left = x + 'px'; div.style.top = y + 'px';
+                div.style.background = `hsl(${x}, 80%, 50%)`;
+                requestAnimationFrame(move);
+            }
+            move();
+        }
+
+        function spawnSlime() {
+            const div = document.createElement('div');
+            div.className = 'chaos slime';
+            div.style.left = Math.random() * 60 + "%";
+            div.style.top = Math.random() * 80 + "%";
+            document.body.appendChild(div);
+        }
+
+        // Init
+        for(let i=0; i<data.upgrades.dvd; i++) setTimeout(spawnDVD, i*100);
+        for(let i=0; i<data.upgrades.slime; i++) setTimeout(spawnSlime, i*100);
+        updateUI();
+    </script>
+</body>
+</html>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -61,4 +240,158 @@
             <span><span id="sps">0</span> STIM/SEC</span>
             <span style="color:var(--gold)">REBIRTHS: <span id="rebirths">0</span></span>
         </div>
-        <div id="xp-container
+        <div id="xp-container"><div id="xp-bar"></div></div>
+    </div>
+
+    <div id="game-ui">
+        <div id="stats"><span id="score">0</span></div>
+        <div id="multiplier-display">Current Multiplier: <span id="mult">1</span>x</div>
+        <button id="click-button">GENERATE CONTENT</button>
+    </div>
+
+    <div id="shop">
+        <h2 style="color:var(--pink); text-align: center; letter-spacing: 2px;">THE SHOP</h2>
+        
+        <div id="rebirth-container">
+            <div style="color: var(--gold); margin-bottom: 5px; font-size: 14px;">NEED LEVEL 10 TO REBIRTH</div>
+            <button id="rebirth-btn" onclick="rebirth()" disabled>REBIRTH (2x MULTI)</button>
+        </div>
+
+        <div class="upgrade" onclick="buy('dvd')">
+            <b>Bouncing Logo</b> <span class="lvl" id="lvl-dvd">0</span><br>
+            <span class="price">Cost: <span id="cost-dvd">15</span></span>
+        </div>
+        <div class="upgrade" onclick="buy('slime')">
+            <b>ASMR Slime</b> <span class="lvl" id="lvl-slime">0</span><br>
+            <span class="price">Cost: <span id="cost-slime">100</span></span>
+        </div>
+        <div class="upgrade" onclick="buy('subway')">
+            <b>Subway Surfers</b> <span class="lvl" id="lvl-subway">0</span><br>
+            <span class="price">Cost: <span id="cost-subway">500</span></span>
+        </div>
+        <div class="upgrade" onclick="buy('press')">
+            <b>Hydraulic Press</b> <span class="lvl" id="lvl-press">0</span><br>
+            <span class="price">Cost: <span id="cost-press">2500</span></span>
+        </div>
+
+        <button onclick="hardReset()" style="width:100%; margin-top:50px; background:none; color:#444; border:none; cursor:pointer;">Hard Reset Save</button>
+    </div>
+
+    <script>
+        let data = JSON.parse(localStorage.getItem('stimDataV2')) || {
+            score: 0, level: 1, xp: 0, rebirths: 0,
+            upgrades: { dvd: 0, slime: 0, subway: 0, press: 0 }
+        };
+
+        const baseCosts = { dvd: 15, slime: 100, subway: 500, press: 2500 };
+        const powers = { dvd: 1, slime: 8, subway: 40, press: 200 };
+
+        function getMultiplier() { return Math.pow(2, data.rebirths); }
+
+        document.getElementById('click-button').onclick = () => {
+            gainStim((1 + (data.level * 0.5)) * getMultiplier());
+            gainXP(10);
+        };
+
+        function gainStim(amt) {
+            data.score += amt;
+            updateUI();
+        }
+
+        function gainXP(amt) {
+            data.xp += amt;
+            let needed = data.level * 100;
+            if (data.xp >= needed) {
+                data.xp = 0;
+                data.level++;
+                spawnEffect();
+            }
+            updateUI();
+        }
+
+        function buy(id) {
+            let cost = Math.floor(baseCosts[id] * Math.pow(1.2, data.upgrades[id]));
+            if (data.score >= cost) {
+                data.score -= cost;
+                data.upgrades[id]++;
+                if (id === 'dvd') spawnDVD();
+                updateUI();
+            }
+        }
+
+        function rebirth() {
+            if (data.level >= 10) {
+                data.rebirths++;
+                data.score = 0;
+                data.level = 1;
+                data.xp = 0;
+                data.upgrades = { dvd: 0, slime: 0, subway: 0, press: 0 };
+                document.querySelectorAll('.chaos').forEach(el => el.remove());
+                updateUI();
+                alert("REBIRTHED! Your power has doubled.");
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('score').innerText = Math.floor(data.score).toLocaleString();
+            document.getElementById('level').innerText = data.level;
+            document.getElementById('rebirths').innerText = data.rebirths;
+            document.getElementById('mult').innerText = getMultiplier().toLocaleString();
+            document.getElementById('xp-bar').style.width = (data.xp / (data.level * 100)) * 100 + "%";
+            
+            // Rebirth Button Visibility
+            document.getElementById('rebirth-container').style.display = data.level >= 5 ? 'block' : 'none';
+            document.getElementById('rebirth-btn').disabled = data.level < 10;
+
+            let totalSPS = 0;
+            for (let id in data.upgrades) {
+                let currentCost = Math.floor(baseCosts[id] * Math.pow(1.2, data.upgrades[id]));
+                document.getElementById(`cost-${id}`).innerText = currentCost.toLocaleString();
+                document.getElementById(`lvl-${id}`).innerText = data.upgrades[id];
+                totalSPS += data.upgrades[id] * powers[id];
+            }
+            document.getElementById('sps').innerText = (totalSPS * getMultiplier()).toLocaleString();
+            localStorage.setItem('stimDataV2', JSON.stringify(data));
+        }
+
+        // Passive Income Loop
+        setInterval(() => {
+            let totalSPS = 0;
+            for (let id in data.upgrades) totalSPS += data.upgrades[id] * powers[id];
+            if (totalSPS > 0) gainStim((totalSPS * getMultiplier()) / 10);
+        }, 100);
+
+        function spawnDVD() {
+            const div = document.createElement('div');
+            div.className = 'chaos dvd'; div.innerText = 'DVD';
+            document.body.appendChild(div);
+            let x = Math.random() * 100, y = Math.random() * 100, dx = 3, dy = 3;
+            function move() {
+                if(!div.parentNode) return;
+                x += dx; y += dy;
+                if (x + 80 >= window.innerWidth - 320 || x <= 0) dx *= -1;
+                if (y + 40 >= window.innerHeight || y <= 0) dy *= -1;
+                div.style.left = x + 'px'; div.style.top = y + 'px';
+                div.style.color = `hsl(${x}, 100%, 70%)`;
+                requestAnimationFrame(move);
+            }
+            move();
+        }
+
+        function spawnEffect() {
+            document.body.style.boxShadow = `inset 0 0 ${data.level * 10}px var(--pink)`;
+        }
+
+        function hardReset() {
+            if(confirm("Wipe everything?")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // Initialize DVDs from save
+        for(let i=0; i<data.upgrades.dvd; i++) spawnDVD();
+        updateUI();
+    </script>
+</body>
+</html>
