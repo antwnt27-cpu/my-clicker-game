@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stimulation Clicker: REBIRTH</title>
+    <style>
+        :root { --neon: #00ffff; --pink: #ff00ff; --gold: #ffcc00; }
+        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; transition: background 1s; }
+        
+        #top-bar { position: fixed; top: 0; width: 100%; background: rgba(0,0,0,0.9); padding: 10px; z-index: 300; border-bottom: 2px solid var(--neon); }
+        #xp-container { width: 95%; height: 8px; background: #222; border-radius: 4px; margin-top: 8px; border: 1px solid #444; }
+        #xp-bar { width: 0%; height: 100%; background: var(--neon); box-shadow: 0 0 10px var(--neon); transition: width 0.3s; }
+
+        #game-ui { position: relative; z-index: 100; text-align: center; padding-top: 120px; pointer-events: none; }
+        #stats { font-size: 55px; font-weight: 900; text-shadow: 0 0 20px var(--pink); margin-bottom: 5px; }
+        #multiplier-display { color: var(--gold); font-weight: bold; font-size: 18px; margin-bottom: 15px; }
+        
+        #click-button {
+            padding: 35px 70px; font-size: 32px; cursor: pointer;
+            background: #fff; color: #000; border: none; border-radius: 15px;
+            pointer-events: auto; font-weight: bold; transition: 0.1s;
+            box-shadow: 0 10px 0 #bbb;
+        }
+        #click-button:active { transform: translateY(5px); box-shadow: 0 5px 0 #999; background: var(--pink); color: white; }
+
+        #shop {
+            position: fixed; right: 0; top: 0; bottom: 0; width: 320px;
+            background: #0a0a0a; border-left: 2px solid var(--neon);
+            padding: 20px; z-index: 200; overflow-y: auto;
+        }
+        .upgrade {
+            background: #1a1a1a; border: 1px solid #333; padding: 15px;
+            margin-bottom: 12px; cursor: pointer; border-radius: 10px; pointer-events: auto;
+        }
+        .upgrade:hover { border-color: var(--pink); background: #222; }
+        .price { color: #00ff00; font-family: monospace; font-weight: bold; }
+        .lvl { float: right; color: var(--neon); font-size: 14px; font-weight: bold; }
+
+        /* Rebirth Section */
+        #rebirth-container {
+            margin-top: 20px; padding: 15px; border: 2px dashed var(--gold);
+            text-align: center; border-radius: 10px; display: none;
+        }
+        #rebirth-btn {
+            background: var(--gold); color: black; border: none; padding: 10px 20px;
+            font-weight: bold; cursor: pointer; border-radius: 5px; width: 100%;
+        }
+        #rebirth-btn:disabled { background: #555; cursor: not-allowed; }
+
+        /* Elements */
+        .chaos { position: absolute; pointer-events: none; border: 2px solid white; border-radius: 4px; }
+        .dvd { width: 80px; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div style="display: flex; justify-content: space-between; padding-right: 20px;">
+            <span>LEVEL <span id="level">1</span></span>
+            <span><span id="sps">0</span> STIM/SEC</span>
+            <span style="color:var(--gold)">REBIRTHS: <span id="rebirths">0</span></span>
+        </div>
+        <div id="xp-container
